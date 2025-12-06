@@ -1,0 +1,20 @@
+{
+  "name": "typescript-junior-assessment",
+  "version": "1.0.0",
+  "description": "TypeScript coding assessment for junior software engineers",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:solutions": "vitest run --config vitest.solutions.config.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
