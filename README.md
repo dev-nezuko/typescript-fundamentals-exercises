@@ -1,52 +1,134 @@
-# Five TypeScript fundamentals exercises
+# TypeScript fundamentals exercises
 
-A deliberately unfinished practice set for arrays, parsing, grouping, generics and async retry behavior. The repository contains **function stubs and tests**, not completed implementations or an interviewer answer key.
+A small practice set: five self-contained TypeScript functions covering array
+aggregation, string parsing, grouping, generics and async retry logic. Each one
+has a written contract (JSDoc in `src/questions.ts`), an implementation, and
+tests. It is a learning exercise, not a library. Nothing here is published to
+npm or meant to be imported by other projects.
 
-| Function | What to practice |
-| --- | --- |
-| `computeArrayStats` | Empty inputs, numeric aggregation and readonly arrays |
-| `parseConnectionString` | Whitespace, required fields and typed values |
-| `groupTransactionsByCategory` | Grouping, totals, order preservation and immutable inputs |
-| `createLookupTable` | Generic ID keys, `Map` and duplicate handling |
-| `executeWithRetry` | Promise failures, attempt limits and timing between retries |
+## Running it
 
-## Work through a problem
-
-Use Node 20+ and npm:
+Requires Node 22.12 or newer (`.nvmrc` pins 22) and npm.
 
 ```sh
-npm ci --ignore-scripts
-npm run typecheck
-npm test
+npm ci
+npm run check        # typecheck + lint + tests
 ```
 
-The stubs in `src/questions.ts` throw `Not implemented yet`. A failing test run is the expected starting state; a passing type check does not mean the exercises are solved. The reviewed baseline discovers 48 tests: 47 fail and one passes with the stubs unchanged. Implement one function, then run only its cases:
+The individual steps are also available:
 
 ```sh
-npm test -- -t computeArrayStats
+npm run typecheck    # tsc --noEmit, strict mode
+npm run lint         # ESLint flat config with typescript-eslint strict rules
+npm test             # Vitest, 70 tests across two files
+npm test -- -t parseConnectionString   # one exercise only
 npm run test:watch
 ```
 
-Read each function's contract before coding. Keep its signature and strict typing, avoid `any`, and preserve the tests. The input arrays and objects are readonly for a reason: several cases check that solutions do not mutate them.
+## The exercises
 
-For example, the statistics contract requires this behavior **after you implement it**:
+All five functions take readonly inputs and never mutate them; the tests check
+this with plain and frozen arrays.
 
-```typescript
+### 1. `computeArrayStats(numbers)`
+
+Returns `count`, `sum`, `average`, `min` and `max`. An empty array gives all
+zeros instead of `NaN`/`Infinity`.
+
+```ts
 computeArrayStats([1, 2, 3]);
 // { count: 3, sum: 6, average: 2, min: 1, max: 3 }
 ```
 
-## What is included
+A single loop computes all the values in one pass. `Math.min(...numbers)` would be
+shorter, but spreading a few hundred thousand elements into function
+arguments throws a `RangeError`. An edge-case test covers 300,000 values.
+O(n) time, O(1) extra space.
 
-- `src/questions.ts`: five documented stubs and the shared interfaces.
-- `src/questions.test.ts`: example, edge-case, mutation and retry/timing checks.
-- `vitest.config.ts`: Node-based test discovery.
-- `tsconfig.json`: strict TypeScript configuration.
+### 2. `parseConnectionString(text)`
 
-The earlier README referred to `src/solutions.ts`, but that file is absent. The broken solutions-only script/configuration was removed rather than implying an answer key exists. The exercise stubs and test expectations remain unchanged. Unused copied fonts were removed; there is no browser interface to render them.
+Parses `host=...;port=...;database=...;ssl=...;timeout=...` into a typed
+`ConnectionConfig`.
 
-## How to use it in a portfolio
+```ts
+parseConnectionString("database=test; host=127.0.0.1; ssl=false; port=3306; timeout=60");
+// { host: "127.0.0.1", port: 3306, database: "test", ssl: false, timeout: 60 }
+```
 
-Keep this as a learning or assessment repository, separate from finished applications. Useful evidence would be a completed solution with a short explanation of its tradeoffs and tests for any contract extensions. The current scaffold is not a stronger pin than a working API or integration project.
+Segments are split on `;`, then on the *first* `=` only, so a value like
+`a=b` survives. Keys and values are trimmed, and empty segments are ignored.
+A repeated key takes its last value. `ssl` is `true` only for the exact string
+`"true"`. A missing key throws `Missing required field: <name>`. The original
+contract didn't cover bad numbers, so an empty or non-numeric `port` or
+`timeout` now throws `Invalid number for field: <name>` instead of returning
+`NaN` or (for an empty string) `0`. O(n) in the string length.
 
-If used for interviews, agree on the expected time and scoring rubric rather than treating this repository as a standardized hiring assessment. Existing tests cover examples of each contract, not every malformed input, resource limit or cancellation policy. No license file is included.
+### 3. `groupTransactionsByCategory(transactions)`
+
+Groups transactions by `category` and returns one summary per category with
+`totalAmount`, `transactionCount` and the original transactions in input order.
+The summaries are sorted by category name.
+
+A `Map` collects each group in insertion order. The category keys are then
+sorted by plain code-unit comparison rather than `localeCompare`, so the
+order doesn't depend on the runtime's locale data. The trade-off is that
+uppercase names sort before lowercase ones (`"Zebra"` before `"apple"`).
+Totals are ordinary floating-point sums, so money values may need rounding
+for display. O(n + k log k) for n transactions in k categories.
+
+### 4. `createLookupTable(items)`
+
+Builds a `Map<K, T>` keyed by each item's `id`, where `K` is `string | number`
+and inferred from the input type.
+
+```ts
+const lookup = createLookupTable([{ id: "SKU-001", price: 29.99 }]);
+lookup.get("SKU-001"); // { id: "SKU-001", price: 29.99 }
+```
+
+This is `new Map(items.map(item => [item.id, item]))`. With duplicate ids the
+last item wins, because a later `Map` entry overwrites an earlier one. Values
+are the original object references, not copies. The numeric key `1` and the
+string key `"1"` stay separate. O(n).
+
+### 5. `executeWithRetry(operation, maxAttempts, delayMs)`
+
+Runs an async operation and retries it on failure. It waits `delayMs` after
+each failed attempt except the last, and then rethrows the last error
+unchanged, even if it isn't an `Error`.
+
+```ts
+await executeWithRetry(() => fetch(url).then((res) => res.json()), 3, 100);
+// up to 3 calls, at most ~200 ms of waiting
+```
+
+`maxAttempts` below 1 (or `NaN`) becomes 1, and fractional values are rounded
+down. A negative or `NaN` delay becomes 0. A synchronous throw from
+`operation` counts as a failed attempt, because the call sits inside the
+`try`. The fake-timer test checks that the first call has no delay and that
+no timer is left pending after the final failure. There is no jitter,
+backoff or cancellation (`AbortSignal`), because the exercise contract asks
+for a fixed delay.
+
+## Layout
+
+```
+src/questions.ts             contracts (JSDoc) and implementations
+src/questions.test.ts        the original 48 contract tests
+src/questions.edge.test.ts   22 edge-case tests added alongside the implementations
+eslint.config.js             ESLint flat config
+vitest.config.ts             Node test environment, discovers src/**/*.test.ts
+```
+
+## Notes
+
+- The functions started as stubs from a junior-level practice brief. The
+  contracts and the original tests are kept. Two timing tests now also assert
+  how many attempts ran, and the only behaviour added is the `Invalid number`
+  error above.
+- TypeScript is held at 6.0 because typescript-eslint does not yet support
+  TypeScript 7.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
