@@ -1,25 +1,6 @@
 /**
- * ============================================================================
- * TYPESCRIPT JUNIOR ENGINEER ASSESSMENT
- * ============================================================================
- *
- * Welcome! This file contains 5 coding problems for you to solve.
- *
- * INSTRUCTIONS:
- * - Implement each function according to its JSDoc description
- * - Only modify this file (questions.ts)
- * - Do NOT change function signatures (names, parameters, return types)
- * - Do NOT modify the test file or configuration files
- * - Your goal is to make all tests pass by running: npm test
- *
- * TIPS:
- * - Read each problem description and examples carefully
- * - Consider edge cases (empty arrays, missing data, etc.)
- * - Use TypeScript features appropriately
- * - You may create helper functions within this file if needed
- *
- * Good luck!
- * ============================================================================
+ * Five TypeScript fundamentals exercises, each with a documented contract
+ * and a worked implementation. The contract tests are in `questions.test.ts`.
  */
 
 // ============================================================================
@@ -97,11 +78,27 @@ export interface Identifiable<K extends string | number> {
  * computeArrayStats([])
  * // Returns: { count: 0, sum: 0, average: 0, min: 0, max: 0 }
  *
+ * Complexity: O(n) time, O(1) extra space.
+ *
  * Difficulty: Easy
  */
 export function computeArrayStats(numbers: readonly number[]): ArrayStats {
-  // TODO: Implement this function
-  throw new Error("Not implemented yet");
+  if (numbers.length === 0) {
+    return { count: 0, sum: 0, average: 0, min: 0, max: 0 };
+  }
+
+  // One pass instead of Math.min(...numbers): spreading a very large array
+  // into call arguments overflows the stack.
+  let sum = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const value of numbers) {
+    sum += value;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+
+  return { count: numbers.length, sum, average: sum / numbers.length, min, max };
 }
 
 // ============================================================================
@@ -123,6 +120,9 @@ export function computeArrayStats(numbers: readonly number[]): ArrayStats {
  * - Keys may appear in any order
  * - Whitespace around keys and values should be trimmed
  * - If a required key is missing, throw an Error with message "Missing required field: <fieldname>"
+ * - If 'port' or 'timeout' is empty or not a finite number, throw an Error with
+ *   message "Invalid number for field: <fieldname>"
+ * - Segments without '=' are ignored; if a key repeats, the last value wins
  *
  * @example
  * parseConnectionString("host=localhost;port=5432;database=mydb;ssl=true;timeout=30")
@@ -136,11 +136,46 @@ export function computeArrayStats(numbers: readonly number[]): ArrayStats {
  * parseConnectionString("host=db.example.com;port=5432;database=prod")
  * // Throws: Error("Missing required field: ssl")
  *
+ * Complexity: O(n) in the length of the string.
+ *
  * Difficulty: Medium
  */
 export function parseConnectionString(connectionString: string): ConnectionConfig {
-  // TODO: Implement this function
-  throw new Error("Not implemented yet");
+  const fields = new Map<string, string>();
+  for (const segment of connectionString.split(";")) {
+    // Split on the first "=" only so values may themselves contain "=".
+    const separator = segment.indexOf("=");
+    if (separator === -1) continue;
+    const key = segment.slice(0, separator).trim();
+    const value = segment.slice(separator + 1).trim();
+    if (key !== "") fields.set(key, value);
+  }
+
+  const requireField = (name: keyof ConnectionConfig): string => {
+    const value = fields.get(name);
+    if (value === undefined) {
+      throw new Error(`Missing required field: ${name}`);
+    }
+    return value;
+  };
+
+  const requireNumber = (name: "port" | "timeout"): number => {
+    const raw = requireField(name);
+    const parsed = Number(raw);
+    // Number("") is 0, so an empty value must be rejected explicitly.
+    if (raw === "" || !Number.isFinite(parsed)) {
+      throw new Error(`Invalid number for field: ${name}`);
+    }
+    return parsed;
+  };
+
+  return {
+    host: requireField("host"),
+    port: requireNumber("port"),
+    database: requireField("database"),
+    ssl: requireField("ssl") === "true",
+    timeout: requireNumber("timeout"),
+  };
 }
 
 // ============================================================================
@@ -191,13 +226,36 @@ export function parseConnectionString(connectionString: string): ConnectionConfi
  * //   }
  * // ]
  *
+ * Complexity: O(n + k log k) for n transactions in k categories.
+ *
  * Difficulty: Medium
  */
 export function groupTransactionsByCategory(
   transactions: readonly Transaction[]
 ): readonly CategorySummary[] {
-  // TODO: Implement this function
-  throw new Error("Not implemented yet");
+  const groups = new Map<string, Transaction[]>();
+  for (const transaction of transactions) {
+    const group = groups.get(transaction.category);
+    if (group) {
+      group.push(transaction);
+    } else {
+      groups.set(transaction.category, [transaction]);
+    }
+  }
+
+  // Plain code-unit comparison keeps the order deterministic across
+  // locales, so "Zebra" sorts before "apple".
+  const categories = [...groups.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+  return categories.map((category) => {
+    const items = groups.get(category) ?? [];
+    return {
+      category,
+      totalAmount: items.reduce((total, item) => total + item.amount, 0),
+      transactionCount: items.length,
+      transactions: items,
+    };
+  });
 }
 
 // ============================================================================
@@ -237,13 +295,15 @@ export function groupTransactionsByCategory(
  * const lookup = createLookupTable(products);
  * lookup.get("SKU-001") // Returns: { id: "SKU-001", price: 29.99 }
  *
+ * Complexity: O(n) time and space.
+ *
  * Difficulty: Medium
  */
 export function createLookupTable<K extends string | number, T extends Identifiable<K>>(
   items: readonly T[]
 ): Map<K, T> {
-  // TODO: Implement this function
-  throw new Error("Not implemented yet");
+  // Map keeps the last value set for a key, which gives "later wins".
+  return new Map(items.map((item): [K, T] => [item.id, item]));
 }
 
 // ============================================================================
@@ -265,6 +325,7 @@ export function createLookupTable<K extends string | number, T extends Identifia
  * - The delay should occur AFTER a failed attempt, not before the first attempt
  * - 'maxAttempts' must be at least 1; if less than 1, treat it as 1
  * - 'delayMs' must be non-negative; if negative, treat it as 0
+ * - A fractional 'maxAttempts' is rounded down; NaN falls back to the minimums above
  *
  * @example
  * // Operation succeeds on first try
@@ -298,6 +359,8 @@ export function createLookupTable<K extends string | number, T extends Identifia
  * );
  * // Throws: Error("Always fails") after 3 attempts and ~200ms delay total
  *
+ * Complexity: At most maxAttempts calls and (maxAttempts - 1) * delayMs of waiting.
+ *
  * Difficulty: Medium
  */
 export async function executeWithRetry<T>(
@@ -305,7 +368,24 @@ export async function executeWithRetry<T>(
   maxAttempts: number,
   delayMs: number
 ): Promise<T> {
-  // TODO: Implement this function
-  throw new Error("Not implemented yet");
+  // NaN falls back to the minimum as well.
+  const attempts = Math.max(1, Math.floor(maxAttempts) || 1);
+  const delay = Math.max(0, delayMs || 0);
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts && delay > 0) {
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastError;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
