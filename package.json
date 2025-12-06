@@ -1,19 +1,26 @@
 {
-  "name": "typescript-junior-assessment",
+  "name": "typescript-fundamentals-exercises",
   "version": "1.0.0",
-  "description": "TypeScript coding assessment for junior software engineers",
+  "private": true,
+  "description": "Five TypeScript fundamentals exercises with implementations and Vitest suites",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "typescript": "^5.3.0",
-    "vitest": "^2.1.0"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.19.0",
+    "eslint": "^10.14.0",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12.0"
   }
 }

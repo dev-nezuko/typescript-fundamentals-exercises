@@ -1,12 +1,10 @@
 /**
  * ============================================================================
- * TYPESCRIPT JUNIOR ENGINEER ASSESSMENT - TEST SUITE
+ * TYPESCRIPT FUNDAMENTALS EXERCISES - CONTRACT TEST SUITE
  * ============================================================================
  *
  * These tests validate the implementations in questions.ts.
  * Run with: npm test
- *
- * DO NOT MODIFY THIS FILE
  * ============================================================================
  */
 
@@ -599,6 +597,7 @@ describe("executeWithRetry", () => {
       // Expected to throw
     }
 
+    expect(attempts).toBe(3);
     const elapsed = Date.now() - start;
     expect(elapsed).toBeLessThan(50); // Should complete quickly with no delays
   });
@@ -620,6 +619,7 @@ describe("executeWithRetry", () => {
       // Expected to throw
     }
 
+    expect(attempts).toBe(3);
     const elapsed = Date.now() - start;
     // Should have waited approximately 100ms (2 delays of 50ms each)
     expect(elapsed).toBeGreaterThanOrEqual(90);
