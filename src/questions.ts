@@ -1,6 +1,7 @@
 /**
  * Five TypeScript fundamentals exercises, each with a documented contract
- * and a worked implementation. The contract tests are in `questions.test.ts`.
+ * and a worked implementation. The contract tests are in `questions.test.ts`;
+ * `questions.edge.test.ts` covers inputs the contract suite leaves out.
  */
 
 // ============================================================================
