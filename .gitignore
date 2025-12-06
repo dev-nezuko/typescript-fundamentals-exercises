@@ -1,1 +1,5 @@
 node_modules
+.gitignore
+.DS_Store
+node_modules/
+dist/

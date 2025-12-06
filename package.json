@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:solutions": "vitest run --config vitest.solutions.config.ts"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -17,4 +17,3 @@
     "node": ">=20.0.0"
   }
 }
-
